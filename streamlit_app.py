@@ -47,7 +47,7 @@ if missing_packages:
             st.error(f"Failed to install {package}. Please try reloading the app.")
             st.stop()
     st.info("Reloading the app with the newly installed packages...")
-    st.experimental_rerun()
+    st.rerun()
 
 # Now import the required packages
 import logging
