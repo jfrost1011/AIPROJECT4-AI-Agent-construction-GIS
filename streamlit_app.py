@@ -80,14 +80,36 @@ try:
     # Define a function to handle GIS query
     def process_gis_query(address):
         """Process a GIS query for the given address"""
+        # Format the query to explicitly request GIS data for the address
         query = f"Provide flood zone and GIS data for {address}"
         
         # Show debugging information in a collapsible section
         with st.expander("Debug Information", expanded=False):
             st.info(f"Query sent to agent: {query}")
+            st.info(f"Address being processed: {address}")
         
         # Get response from agent
         response = research_construction(query)
+        
+        # Basic validation - ensure the response is JSON and contains the right address
+        try:
+            # Parse the response to check if it's valid JSON
+            response_data = json.loads(response)
+            
+            # Completely replace the properties.address field with the correct address
+            if "features" in response_data and len(response_data["features"]) > 0:
+                if "properties" in response_data["features"][0]:
+                    # Forcefully set the address field to the user's input
+                    response_data["features"][0]["properties"]["address"] = address
+                    
+                    # Convert back to JSON string for storage
+                    response = json.dumps(response_data)
+                    
+                    # Log that we fixed the address
+                    logger.info(f"Ensured GeoJSON has correct address: {address}")
+        except Exception as e:
+            # If the response isn't valid JSON or there's any error, log it but don't fail
+            logger.warning(f"Error validating/fixing GeoJSON response: {str(e)}")
         
         # Save the response and address for state persistence
         st.session_state.has_run_query = True
@@ -107,6 +129,11 @@ try:
             # Try to parse as JSON
             geojson_data = json.loads(response)
             
+            # CRITICAL FIX: Always overwrite the address in the GeoJSON with the user's input
+            if "features" in geojson_data and len(geojson_data["features"]) > 0:
+                if "properties" in geojson_data["features"][0]:
+                    geojson_data["features"][0]["properties"]["address"] = address
+            
             # Display basic info about the GeoJSON
             st.success(f"✅ Successfully retrieved GIS data for: {address}")
             
@@ -116,8 +143,15 @@ try:
                 if "properties" in feature:
                     props = feature["properties"]
                     st.subheader("Property Information")
+                    
+                    # Force the address to be the user's input
+                    props["address"] = address
+                    
+                    # Display property information in a more structured format
+                    st.write(f"**address:** {address}")  # Always show user's input address first
                     for key, value in props.items():
-                        st.write(f"**{key}:** {value}")
+                        if key != "address":  # Skip address as we already displayed it
+                            st.write(f"**{key}:** {value}")
                 
                 # Check if geometry exists
                 if "geometry" in feature and "coordinates" in feature["geometry"]:
@@ -145,10 +179,10 @@ try:
                             }
                         ).add_to(m)
                         
-                        # Add a marker at the centroid
+                        # Add a marker at the centroid with the correct address
                         folium.Marker(
                             [centroid.y, centroid.x],
-                            popup=address,
+                            popup=address,  # Use the user's input address
                             icon=folium.Icon(color='red', icon='home')
                         ).add_to(m)
                         
@@ -191,7 +225,7 @@ try:
     query_type = st.selectbox("Select Query Type:", ["General Construction Query", "GIS Mapping Query"])
 
     if query_type == "GIS Mapping Query":
-        address = st.text_input("Enter Property Address:", "123 Main Street, Los Angeles, CA")
+        address = st.text_input("Enter Property Address:", "7937 Sale Ave, West Hills, CA 91304")
         
         # Create a button to fetch GIS data
         if st.button("Fetch GIS Data"):

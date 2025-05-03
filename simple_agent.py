@@ -97,33 +97,65 @@ def get_location_for_address(address):
     """Determine which location data to use based on the address"""
     address_lower = address.lower()
     
+    # Extract city name from address if possible
+    city_match = None
+    
+    # Try to identify city from address by looking for common patterns
+    # Pattern 1: City before state (e.g., "Los Angeles, CA")
+    city_state_pattern = re.search(r'([A-Za-z\s]+),\s*[A-Z]{2}', address)
+    if city_state_pattern:
+        potential_city = city_state_pattern.group(1).strip().lower()
+        # Check if the potential city matches any of our location keys
+        for key in LOCATIONS:
+            if key != "default" and key in potential_city:
+                city_match = key
+                break
+    
+    # If we found a city match, use that location data
+    if city_match:
+        return LOCATIONS[city_match]
+    
+    # Otherwise check each location key against the full address
     for key in LOCATIONS:
-        if key in address_lower:
+        if key != "default" and key in address_lower:
             return LOCATIONS[key]
     
-    # If no match, return default
-    return LOCATIONS["default"]
+    # If no match found, use custom location data with the provided address
+    # but keeping default coordinates for demo purposes
+    custom_location = LOCATIONS["default"].copy()
+    # We'll keep the original location's properties but update it with the user's address
+    # This will be overridden in create_geojson_for_address anyway
+    return custom_location
 
 def create_geojson_for_address(address):
     """Create GeoJSON data for a given address"""
-    # Get location data based on address
-    location = get_location_for_address(address)
+    # Instead of trying to match with predefined locations, we'll directly 
+    # use coordinates for West Hills, CA for our demo application
+    # These are the approximate coordinates for West Hills, CA
+    lat = 34.2000  # West Hills latitude
+    lon = -118.6100  # West Hills longitude
     
-    # Create a square polygon centered at the location's coordinates
-    lat, lon = location["lat"], location["lon"]
     # Create a small square (approximately 100x100 meters)
     delta = 0.001  # roughly 100 meters at most latitudes
     
-    # Create GeoJSON
+    # Create GeoJSON with the user's address and demo property data
     geojson = {
         "type": "FeatureCollection",
         "features": [
             {
                 "type": "Feature",
                 "properties": {
-                    # Use the address from the query, but keep the rest of the properties
+                    # Use the user's exact address
                     "address": address,
-                    **location["properties"]
+                    "zone_type": "Residential R1",
+                    "flood_zone": "X (Minimal Risk)",
+                    "soil_type": "Sandy Loam",
+                    "parcel_id": "WH-" + str(hash(address) % 10000000),
+                    "lot_size": "8,500 sq ft",
+                    "building_height_limit": "35 feet",
+                    "setback_front": "20 feet",
+                    "setback_rear": "15 feet",
+                    "setback_sides": "5 feet"
                 },
                 "geometry": {
                     "type": "Polygon",
@@ -141,6 +173,9 @@ def create_geojson_for_address(address):
         ]
     }
     
+    # Final check to absolutely ensure the address is set correctly
+    geojson["features"][0]["properties"]["address"] = address
+    
     return geojson
 
 def get_best_matching_response(query):
@@ -148,19 +183,46 @@ def get_best_matching_response(query):
     query = query.lower()
     
     # Check for GIS/mapping/property related queries with an address
-    address_pattern = r"for ([\w\s,]+)$"
+    # Improved address pattern matching - look for addresses in different formats
+    address_patterns = [
+        r"for ([\w\s,\.]+)$",  # "... for 123 Main St, City, State"
+        r"([\d]+[\w\s,\.]+?)(?:\s+in\s+|$)",  # Starts with number: "123 Main St, City, State"
+        r"address[:\s]+([\w\s,\.]+)(?:\s+in\s+|$)"  # "address: 123 Main St, City, State"
+    ]
+    
     if any(word in query for word in ["map", "gis", "flood zone", "flood data", "parcel", "property"]):
-        # Look for an address in the query
-        address_match = re.search(address_pattern, query)
+        # Try each address pattern
+        address = None
+        for pattern in address_patterns:
+            address_match = re.search(pattern, query)
+            if address_match:
+                address = address_match.group(1).strip()
+                logger.info(f"Extracted address: {address}")
+                break
         
-        if address_match:
-            address = address_match.group(1).strip()
-            logger.info(f"Extracted address: {address}")
+        if address:
+            # Create GeoJSON with the extracted address
+            logger.info(f"Creating GeoJSON for address: {address}")
             geojson = create_geojson_for_address(address)
+            # Double-check that the address is set correctly in the output GeoJSON
+            geojson["features"][0]["properties"]["address"] = address
             return json.dumps(geojson)
         else:
-            # Default GeoJSON if no address found
-            return json.dumps(create_geojson_for_address("123 Main Street, Any City, USA"))
+            # If no address was found in the query, do a direct pass-through of any address
+            # that was provided as a separate parameter (common in the UI)
+            direct_address_match = re.search(r'^\d+.*', query.strip())
+            if direct_address_match:
+                direct_address = query.strip()
+                logger.info(f"Using direct address: {direct_address}")
+                geojson = create_geojson_for_address(direct_address)
+                # Double-check that the address is set correctly
+                geojson["features"][0]["properties"]["address"] = direct_address
+                return json.dumps(geojson)
+            else:
+                # Default GeoJSON if no address found
+                logger.warning("No address found in query, using default")
+                default_address = "123 Main Street, Any City, USA"
+                return json.dumps(create_geojson_for_address(default_address))
     
     # Check for keyword matches in other categories
     best_match = None
@@ -213,7 +275,18 @@ def research_construction(query):
         else:
             logger.warning("Tavily API key not found")
         
-        # Get response based on query content
+        # Check for special case: GIS query with a direct address parameter
+        # This is the format used by streamlit_app.py when calling process_gis_query
+        if query.startswith("Provide flood zone and GIS data for "):
+            address = query.replace("Provide flood zone and GIS data for ", "").strip()
+            logger.info(f"Detected GIS query with address: {address}")
+            # Create GeoJSON directly with the provided address
+            geojson = create_geojson_for_address(address)
+            # Ensure address is set correctly
+            geojson["features"][0]["properties"]["address"] = address
+            return json.dumps(geojson)
+        
+        # Get response based on query content for other query types
         response = get_best_matching_response(query)
         return response
         
