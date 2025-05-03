@@ -33,7 +33,12 @@ SAMPLE_RESPONSES = {
     "windows": "Window selection factors include energy efficiency (look for ENERGY STAR ratings and low U-values), frame material (vinyl, wood, fiberglass, aluminum), style (double-hung, casement, sliding), glass type (double or triple pane), and local building code requirements. Proper installation with correct flashing and sealing is crucial to prevent water intrusion and air leakage.",
     "hvac": "HVAC (Heating, Ventilation, and Air Conditioning) systems should be properly sized using Manual J calculations. Oversized systems cycle too frequently, while undersized systems run constantly. Consider energy efficiency ratings (SEER for cooling, AFUE for heating), zoning options for temperature control in different areas, and indoor air quality components like filtration and ventilation. Regular maintenance is essential for optimal performance and longevity.",
     "painting": "Proper painting preparation includes cleaning surfaces, repairing damage, sanding, and priming. Use appropriate paints for each application: latex-based for most interior walls, oil or acrylic for trim, moisture-resistant for bathrooms and kitchens, and exterior-grade for outdoor surfaces. Quality matters—premium paints typically offer better coverage, durability, and washability, often making them more cost-effective in the long run.",
-    "flooring": "Flooring options include hardwood (durable, adds value), engineered wood (more stable in humid conditions), laminate (budget-friendly, scratch-resistant), luxury vinyl (waterproof, easy maintenance), tile (ideal for wet areas), and carpet (comfortable but harder to clean). Consider the room's function, moisture exposure, traffic levels, maintenance requirements, and installation method when selecting flooring."
+    "flooring": "Flooring options include hardwood (durable, adds value), engineered wood (more stable in humid conditions), laminate (budget-friendly, scratch-resistant), luxury vinyl (waterproof, easy maintenance), tile (ideal for wet areas), and carpet (comfortable but harder to clean). Consider the room's function, moisture exposure, traffic levels, maintenance requirements, and installation method when selecting flooring.",
+    "kitchen remodel": "A kitchen remodel typically involves these key steps: 1) Planning and design (layout, style, and budget determination), 2) Permits (check local requirements), 3) Demolition, 4) Plumbing and electrical rough-ins, 5) Cabinetry installation, 6) Countertop installation, 7) Appliance hookups, 8) Backsplash and finishing details. Consider functionality with the work triangle (sink, stove, refrigerator), adequate counter space, quality cabinets, durable countertops, proper lighting (task, ambient, accent), and energy-efficient appliances. Expect the process to take 4-8 weeks for a complete renovation.",
+    "bathroom remodel": "Bathroom remodeling involves: 1) Planning (layout, fixtures, ventilation), 2) Permits, 3) Demolition, 4) Plumbing rough-ins, 5) Electrical updates, 6) Shower/tub installation, 7) Tiling, 8) Vanity and toilet installation, 9) Fixtures and accessories. Focus on proper waterproofing, adequate ventilation to prevent mold, slip-resistant flooring, and GFCI electrical protection. For aging in place, consider grab bars, curbless showers, and comfort-height toilets. Most bathroom renovations take 3-6 weeks to complete.",
+    "basement finishing": "Finishing a basement involves: 1) Moisture control (addressing any water issues first), 2) Insulation, 3) Framing walls, 4) Electrical and plumbing, 5) Drywall installation, 6) Flooring, 7) Trim and finishing. Consider egress requirements for bedrooms, proper ceiling height (typically minimum 7 feet), radon mitigation if needed, and water-resistant materials. Insulate properly for energy efficiency and sound control. Leave access to key mechanical systems for maintenance. Expect 4-8 weeks for completion depending on size and complexity.",
+    "deck construction": "Building a deck requires: 1) Design and permits (check local codes), 2) Layout and foundation (proper footings below frost line), 3) Frame construction with pressure-treated lumber or composite materials, 4) Ledger board attachment with proper flashing, 5) Joist and beam installation, 6) Decking, 7) Railings and stairs if needed. Consider material options (pressure-treated wood, cedar, composite, PVC), proper spacing for drainage, railing height requirements (typically 36-42 inches), and stair specifications. Typical construction takes 1-2 weeks depending on size and complexity.",
+    "garage conversion": "Converting a garage involves: 1) Checking zoning laws and permits, 2) Floor raising and insulating (garages are often lower than house floors), 3) Wall insulation, 4) Ceiling finishing, 5) Electrical upgrades, 6) HVAC extension, 7) Window installation, 8) Door replacement, 9) Flooring. Consider parking requirements in your area, proper insulation for comfort, sufficient electrical capacity, and HVAC needs. Budget for potential plumbing if adding a bathroom. A well-executed conversion can add valuable living space without expanding your home's footprint."
 }
 
 # Different locations for sample GeoJSON data
@@ -241,32 +246,84 @@ def get_best_matching_response(query):
         "measuring": "measure backyard",
         "backyard measurement": "measure backyard",
         "how big": "measure backyard",
+        
         "adu": "adu",
         "accessory dwelling unit": "adu",
         "granny flat": "adu",
         "in-law unit": "adu",
         "mother-in-law": "adu",
+        
         "foundation": "foundation",
+        
         "electrical": "electrical",
         "wiring": "electrical",
         "circuit": "electrical",
+        
         "plumbing": "plumbing",
         "pipes": "plumbing",
         "water line": "plumbing",
+        
         "insulation": "insulation",
         "insulate": "insulation",
         "r-value": "insulation",
+        
         "roof": "roofing",
         "shingles": "roofing",
+        
+        "window": "windows",
         "windows": "windows",
+        
         "hvac": "hvac",
         "heating": "hvac",
         "air conditioning": "hvac",
         "ventilation": "hvac",
+        
         "paint": "painting",
         "painting": "painting",
+        
         "floor": "flooring",
-        "flooring": "flooring"
+        "flooring": "flooring",
+        
+        # New kitchen remodeling phrases
+        "kitchen": "kitchen remodel",
+        "kitchen remodel": "kitchen remodel",
+        "renovate kitchen": "kitchen remodel",
+        "update kitchen": "kitchen remodel",
+        "remodeling kitchen": "kitchen remodel",
+        "new kitchen": "kitchen remodel",
+        "cabinets": "kitchen remodel",
+        "countertop": "kitchen remodel",
+        
+        # Bathroom remodeling phrases
+        "bathroom": "bathroom remodel",
+        "bathroom remodel": "bathroom remodel",
+        "renovate bathroom": "bathroom remodel",
+        "update bathroom": "bathroom remodel",
+        "shower": "bathroom remodel",
+        "bathtub": "bathroom remodel",
+        "toilet": "bathroom remodel",
+        "vanity": "bathroom remodel",
+        
+        # Basement phrases
+        "basement": "basement finishing",
+        "finish basement": "basement finishing",
+        "basement remodel": "basement finishing",
+        
+        # Deck phrases
+        "deck": "deck construction",
+        "patio": "deck construction",
+        "build deck": "deck construction",
+        "outdoor space": "deck construction",
+        
+        # Garage conversion
+        "garage": "garage conversion",
+        "convert garage": "garage conversion",
+        "garage apartment": "garage conversion",
+        
+        # General remodeling terms - default to kitchen as most common
+        "remodel": "kitchen remodel",
+        "renovate": "kitchen remodel",
+        "renovation": "kitchen remodel"
     }
     
     # Check for phrase matches
