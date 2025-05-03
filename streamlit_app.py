@@ -80,30 +80,93 @@ try:
         if st.button("Fetch GIS Data"):
             with st.spinner("Fetching GIS data..."):
                 query = f"Provide flood zone and GIS data for {address}"
+                
+                # Show debugging information in a collapsible section
+                with st.expander("Debug Information", expanded=False):
+                    st.info(f"Query sent to agent: {query}")
+                
+                # Get response from agent
                 response = research_construction(query)
                 
+                # Debug: show raw response
+                with st.expander("Raw Response", expanded=False):
+                    st.code(response, language="json")
+                
                 try:
+                    # Try to parse as JSON
                     geojson_data = json.loads(response)
-
-                    # Load GeoJSON into GeoPandas GeoDataFrame
-                    gdf = gpd.GeoDataFrame.from_features(geojson_data["features"])
-
-                    # Get centroid for initial map location
-                    centroid = gdf.geometry.centroid.iloc[0]
-                    m = folium.Map(location=[centroid.y, centroid.x], zoom_start=14)
-
-                    # Add GeoJSON layer
-                    folium.GeoJson(geojson_data, name="GIS Data").add_to(m)
-
-                    # Display interactive map
-                    st_folium(m, width=700, height=500)
+                    
+                    # Display basic info about the GeoJSON
+                    st.success(f"✅ Successfully retrieved GIS data for: {address}")
+                    
+                    if "features" in geojson_data and len(geojson_data["features"]) > 0:
+                        # Show property information
+                        feature = geojson_data["features"][0]
+                        if "properties" in feature:
+                            props = feature["properties"]
+                            st.subheader("Property Information")
+                            for key, value in props.items():
+                                st.write(f"**{key}:** {value}")
+                        
+                        # Check if geometry exists
+                        if "geometry" in feature and "coordinates" in feature["geometry"]:
+                            st.subheader("Location Map")
+                            
+                            try:
+                                # Load GeoJSON into GeoPandas GeoDataFrame
+                                gdf = gpd.GeoDataFrame.from_features(geojson_data["features"])
+                                
+                                # Get centroid for initial map location
+                                centroid = gdf.geometry.centroid.iloc[0]
+                                
+                                # Create map centered at the property
+                                m = folium.Map(location=[centroid.y, centroid.x], zoom_start=14)
+                                
+                                # Add GeoJSON layer
+                                folium.GeoJson(
+                                    geojson_data, 
+                                    name="GIS Data",
+                                    style_function=lambda x: {
+                                        'fillColor': '#3388ff',
+                                        'color': '#3388ff',
+                                        'weight': 2,
+                                        'fillOpacity': 0.4,
+                                    }
+                                ).add_to(m)
+                                
+                                # Add a marker at the centroid
+                                folium.Marker(
+                                    [centroid.y, centroid.x],
+                                    popup=address,
+                                    icon=folium.Icon(color='red', icon='home')
+                                ).add_to(m)
+                                
+                                # Display the map
+                                st_folium(m, width=700, height=500)
+                            except Exception as map_error:
+                                st.error(f"Error displaying map: {str(map_error)}")
+                                # Show detailed error info
+                                with st.expander("Map Error Details"):
+                                    st.code(str(map_error))
+                    else:
+                        st.warning("The GeoJSON data does not contain any features to display on the map.")
                     
                     # Display raw GeoJSON data
-                    st.json(geojson_data)
+                    with st.expander("View Raw GeoJSON Data"):
+                        st.json(geojson_data)
 
-                except Exception as e:
-                    st.warning("No GIS data found or unable to parse data.")
+                except json.JSONDecodeError as json_error:
+                    st.error("The response is not valid JSON format.")
+                    st.info("Here's the raw response received:")
                     st.write(response)
+                    with st.expander("JSON Error Details"):
+                        st.code(str(json_error))
+                except Exception as e:
+                    st.warning("Error processing GIS data.")
+                    st.info("Here's the raw response received:")
+                    st.write(response)
+                    with st.expander("Error Details"):
+                        st.code(str(e))
 
     else:  # General Construction Query
         user_query = st.text_area("Enter Your Construction Query:", "What are the current zoning regulations for ADUs in Los Angeles?")

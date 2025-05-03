@@ -6,6 +6,7 @@ import os
 import json
 import logging
 import sys
+import re
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -24,43 +25,142 @@ SAMPLE_RESPONSES = {
     "timeline": "Typical construction timelines include 3-6 months for small renovations, 6-12 months for custom homes, and 1-3+ years for larger commercial projects. Factors affecting timeline include project size, complexity, permitting, weather, and labor availability."
 }
 
-# Sample GeoJSON data for mapping queries
-SAMPLE_GEOJSON = {
-    "type": "FeatureCollection",
-    "features": [
-        {
-            "type": "Feature",
-            "properties": {
-                "address": "123 Main Street, Los Angeles, CA",
-                "zone_type": "Residential R1",
-                "flood_zone": "X (Minimal Risk)",
-                "soil_type": "Urban Land Complex",
-                "parcel_id": "1234567890"
-            },
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [-118.2437, 34.0522],
-                        [-118.2427, 34.0522],
-                        [-118.2427, 34.0532],
-                        [-118.2437, 34.0532],
-                        [-118.2437, 34.0522]
-                    ]
-                ]
-            }
+# Different locations for sample GeoJSON data
+LOCATIONS = {
+    "los angeles": {
+        "lat": 34.0522,
+        "lon": -118.2437,
+        "properties": {
+            "address": "123 Main Street, Los Angeles, CA",
+            "zone_type": "Residential R1",
+            "flood_zone": "X (Minimal Risk)",
+            "soil_type": "Urban Land Complex",
+            "parcel_id": "LA-1234567890",
+            "lot_size": "7,500 sq ft",
+            "building_height_limit": "45 feet",
+            "setback_front": "20 feet",
+            "setback_rear": "15 feet",
+            "setback_sides": "5 feet"
         }
-    ]
+    },
+    "san francisco": {
+        "lat": 37.7749,
+        "lon": -122.4194,
+        "properties": {
+            "address": "456 Market Street, San Francisco, CA",
+            "zone_type": "Mixed-Use Commercial",
+            "flood_zone": "B (Moderate Risk)",
+            "soil_type": "Bay Mud",
+            "parcel_id": "SF-9876543210",
+            "lot_size": "5,000 sq ft",
+            "building_height_limit": "65 feet",
+            "setback_front": "10 feet",
+            "setback_rear": "10 feet",
+            "setback_sides": "5 feet"
+        }
+    },
+    "new york": {
+        "lat": 40.7128,
+        "lon": -74.0060,
+        "properties": {
+            "address": "789 Broadway, New York, NY",
+            "zone_type": "R8 High-Density Residential",
+            "flood_zone": "A (High Risk)",
+            "soil_type": "Urban Fill",
+            "parcel_id": "NY-5678901234",
+            "lot_size": "2,500 sq ft",
+            "building_height_limit": "120 feet",
+            "setback_front": "0 feet",
+            "setback_rear": "30 feet",
+            "setback_sides": "0 feet"
+        }
+    },
+    "default": {
+        "lat": 39.8283,
+        "lon": -98.5795,
+        "properties": {
+            "address": "123 Main Street, Any City, USA",
+            "zone_type": "Residential",
+            "flood_zone": "X (Minimal Risk)",
+            "soil_type": "Loam",
+            "parcel_id": "12345-67890",
+            "lot_size": "5,000 sq ft",
+            "building_height_limit": "35 feet",
+            "setback_front": "20 feet",
+            "setback_rear": "15 feet",
+            "setback_sides": "5 feet"
+        }
+    }
 }
+
+def get_location_for_address(address):
+    """Determine which location data to use based on the address"""
+    address_lower = address.lower()
+    
+    for key in LOCATIONS:
+        if key in address_lower:
+            return LOCATIONS[key]
+    
+    # If no match, return default
+    return LOCATIONS["default"]
+
+def create_geojson_for_address(address):
+    """Create GeoJSON data for a given address"""
+    # Get location data based on address
+    location = get_location_for_address(address)
+    
+    # Create a square polygon centered at the location's coordinates
+    lat, lon = location["lat"], location["lon"]
+    # Create a small square (approximately 100x100 meters)
+    delta = 0.001  # roughly 100 meters at most latitudes
+    
+    # Create GeoJSON
+    geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {
+                    # Use the address from the query, but keep the rest of the properties
+                    "address": address,
+                    **location["properties"]
+                },
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [lon - delta, lat - delta],
+                            [lon + delta, lat - delta],
+                            [lon + delta, lat + delta],
+                            [lon - delta, lat + delta],
+                            [lon - delta, lat - delta]
+                        ]
+                    ]
+                }
+            }
+        ]
+    }
+    
+    return geojson
 
 def get_best_matching_response(query):
     """Get the best matching response based on keywords in the query"""
     query = query.lower()
     
-    # Check for GIS/mapping related queries
+    # Check for GIS/mapping/property related queries with an address
+    address_pattern = r"for ([\w\s,]+)$"
     if any(word in query for word in ["map", "gis", "flood zone", "flood data", "parcel", "property"]):
-        # For GIS queries, return GeoJSON
-        return json.dumps(SAMPLE_GEOJSON)
+        # Look for an address in the query
+        address_match = re.search(address_pattern, query)
+        
+        if address_match:
+            address = address_match.group(1).strip()
+            logger.info(f"Extracted address: {address}")
+            geojson = create_geojson_for_address(address)
+            return json.dumps(geojson)
+        else:
+            # Default GeoJSON if no address found
+            return json.dumps(create_geojson_for_address("123 Main Street, Any City, USA"))
     
     # Check for keyword matches in other categories
     best_match = None
@@ -128,9 +228,12 @@ if __name__ == "__main__":
         "How do I get a building permit?",
         "What are the best materials for hurricane-resistant construction?",
         "Tell me about modern construction techniques",
-        "What flood zone is 123 Main Street in?"
+        "What flood zone is 123 Main Street in?",
+        "Provide flood zone and GIS data for 123 Main Street, Los Angeles, CA",
+        "Provide flood zone and GIS data for 456 Market Street, San Francisco, CA"
     ]
     
     for query in test_queries:
         print(f"\nQuery: {query}")
-        print(f"Response: {research_construction(query)}") 
+        response = research_construction(query)
+        print(f"Response: {response[:100]}..." if len(response) > 100 else f"Response: {response}") 
