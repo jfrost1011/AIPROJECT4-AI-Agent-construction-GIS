@@ -46,18 +46,28 @@ try:
 
     # Import the application components
     try:
-        # Try to import from the current directory
+        # Try to import from agent_wrapper
         try:
-            from agent import research_construction
-            logger.info("Successfully imported from current directory")
-        except ImportError:
-            # If not found, try to import from the AIPROJECT4-AI-Agent-construction-GIS directory
-            sys.path.append(os.path.join(os.path.dirname(__file__), "AIPROJECT4-AI-Agent-construction-GIS"))
-            from agent import research_construction
-            logger.info("Successfully imported from AIPROJECT4-AI-Agent-construction-GIS directory")
-    except ImportError as e:
-        st.error(f"❌ Error importing agent module: {str(e)}")
-        st.stop()
+            # Add the current directory to path
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            if current_dir not in sys.path:
+                sys.path.insert(0, current_dir)
+                
+            from agent_wrapper import research_construction
+            logger.info("Successfully imported from agent_wrapper")
+        except ImportError as e:
+            logger.error(f"Error importing from agent_wrapper: {str(e)}")
+            
+            # Define a fallback function as a last resort
+            def research_construction(query):
+                return (
+                    "Unable to load the agent module. This could be due to missing files or API keys. "
+                    "Please check that all required files are present and API keys are configured properly."
+                )
+            logger.warning("Using fallback research_construction function")
+    except Exception as e:
+        st.error(f"❌ Error setting up agent module: {str(e)}")
+        st.info("The application will continue with limited functionality.")
 
     # Main application
     st.title("🏗️ AI-Powered Construction Research Assistant")
