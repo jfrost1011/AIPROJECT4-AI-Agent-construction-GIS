@@ -23,17 +23,23 @@ except ImportError:
     try:
         from agent import research_construction
         logger.info("Successfully imported agent module from current directory")
-    except ImportError as e:
-        logger.error(f"Failed to import agent module: {str(e)}")
+    except ImportError:
+        logger.warning("Could not import from agent.py, attempting to import from simple_agent.py")
         
-        # As a fallback, define a simple mock function
-        def research_construction(query):
-            return (
-                "Error: Unable to load the agent module. Please check that all files are "
-                "in the correct location and the API keys are properly set."
-            )
-        
-        logger.warning("Using mock research_construction function")
+        try:
+            from simple_agent import research_construction
+            logger.info("Successfully imported from simple_agent")
+        except ImportError as e:
+            logger.error(f"Failed to import agent module: {str(e)}")
+            
+            # As a final fallback, define a simple mock function
+            def research_construction(query):
+                return (
+                    "Error: Unable to load the agent module. Please check that all files are "
+                    "in the correct location and the API keys are properly set."
+                )
+            
+            logger.warning("Using mock research_construction function")
 
 # Test if the function works
 if __name__ == "__main__":
