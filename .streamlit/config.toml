@@ -1,0 +1,19 @@
+[server]
+# If true, will watch the codebase for file changes
+runOnSave = true
+
+[theme]
+# Default light theme
+primaryColor = "#3498db"  # Blue
+backgroundColor = "#f8f9fa"
+secondaryBackgroundColor = "#e9ecef"
+textColor = "#343a40"
+font = "sans serif"
+
+[logger]
+# Log level for Streamlit app
+level = "info"
+
+[client]
+# If true, displays a warning when the app takes more than 500ms to respond
+showErrorDetails = true 
