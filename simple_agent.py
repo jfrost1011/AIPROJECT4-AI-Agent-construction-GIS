@@ -22,7 +22,18 @@ SAMPLE_RESPONSES = {
     "flood": "Flood zone data is categorized by FEMA into zones like A (high risk), B/X (moderate risk), and C/X (minimal risk). Properties in high-risk zones often require flood insurance and special building considerations.",
     "soil": "Soil types significantly impact construction decisions, including foundation design, drainage solutions, and structural requirements. Common soil classifications include clay, sand, silt, loam, and rock.",
     "costs": "Construction costs vary widely based on location, materials, design complexity, labor rates, and market conditions. Current average costs range from $150-$400 per square foot for residential construction, depending on quality level.",
-    "timeline": "Typical construction timelines include 3-6 months for small renovations, 6-12 months for custom homes, and 1-3+ years for larger commercial projects. Factors affecting timeline include project size, complexity, permitting, weather, and labor availability."
+    "timeline": "Typical construction timelines include 3-6 months for small renovations, 6-12 months for custom homes, and 1-3+ years for larger commercial projects. Factors affecting timeline include project size, complexity, permitting, weather, and labor availability.",
+    "measure backyard": "To measure your backyard for an ADU (Accessory Dwelling Unit), follow these steps:\n1. Use a long measuring tape to determine the length and width of your yard.\n2. Mark the property boundaries clearly.\n3. Note the distance from your main house and property lines.\n4. Check local setback requirements (typically 5-15 feet from property lines).\n5. Measure and note any obstructions like trees, utility lines, or existing structures.\n6. Calculate the total square footage to ensure it meets minimum ADU size requirements.\n7. Consider creating a scale drawing on graph paper or using a digital design tool.",
+    "adu": "Accessory Dwelling Units (ADUs) are secondary housing units on residential properties. Key considerations include: local zoning regulations, minimum/maximum size requirements (typically 150-1,200 sq ft), setbacks from property lines, height restrictions, parking requirements, utility connections, and design compatibility with the primary residence. Many municipalities have recently relaxed ADU restrictions to address housing shortages.",
+    "foundation": "Residential foundations typically include slab-on-grade, crawlspace, or basement options. Selection depends on soil conditions, climate, budget, and building design. Proper foundation construction requires excavation, forming, reinforcement placement, concrete pouring, waterproofing, and insulation. Consult with a structural engineer for specific requirements based on your location and building type.",
+    "electrical": "Residential electrical work must comply with the National Electrical Code (NEC) and local amendments. This includes proper sizing of service panels (typically 100-200 amps for homes), appropriate wire gauges, GFCI protection in wet areas, AFCI protection in living spaces, grounding systems, and dedicated circuits for major appliances. Always hire a licensed electrician for safety and code compliance.",
+    "plumbing": "Residential plumbing systems include water supply, drainage, and venting components. Materials typically include copper, PEX, or CPVC for supply lines and PVC or ABS for drains. Proper installation requires appropriate pipe sizing, slope for drainage (typically 1/4 inch per foot), venting for each fixture, and accessibility for maintenance. Most jurisdictions require permits and inspections for new plumbing work.",
+    "insulation": "Proper insulation improves energy efficiency and comfort. Common types include fiberglass batts (R-13 to R-21 for walls, R-30 to R-60 for attics), spray foam (highest R-value per inch), cellulose (environmentally friendly), and rigid foam board (ideal for basements). Recommended R-values vary by climate zone, with higher values needed in colder regions. Don't forget to insulate floors, crawlspaces, and around windows and doors.",
+    "roofing": "Common residential roofing materials include asphalt shingles (20-30 year lifespan), metal (40-70 years), clay/concrete tile (50+ years), slate (100+ years), and various synthetic options. Selection factors include climate, roof pitch, structural support, aesthetics, and budget. Proper installation requires appropriate underlayment, flashing at all penetrations and transitions, and adequate ventilation to prevent moisture damage.",
+    "windows": "Window selection factors include energy efficiency (look for ENERGY STAR ratings and low U-values), frame material (vinyl, wood, fiberglass, aluminum), style (double-hung, casement, sliding), glass type (double or triple pane), and local building code requirements. Proper installation with correct flashing and sealing is crucial to prevent water intrusion and air leakage.",
+    "hvac": "HVAC (Heating, Ventilation, and Air Conditioning) systems should be properly sized using Manual J calculations. Oversized systems cycle too frequently, while undersized systems run constantly. Consider energy efficiency ratings (SEER for cooling, AFUE for heating), zoning options for temperature control in different areas, and indoor air quality components like filtration and ventilation. Regular maintenance is essential for optimal performance and longevity.",
+    "painting": "Proper painting preparation includes cleaning surfaces, repairing damage, sanding, and priming. Use appropriate paints for each application: latex-based for most interior walls, oil or acrylic for trim, moisture-resistant for bathrooms and kitchens, and exterior-grade for outdoor surfaces. Quality matters—premium paints typically offer better coverage, durability, and washability, often making them more cost-effective in the long run.",
+    "flooring": "Flooring options include hardwood (durable, adds value), engineered wood (more stable in humid conditions), laminate (budget-friendly, scratch-resistant), luxury vinyl (waterproof, easy maintenance), tile (ideal for wet areas), and carpet (comfortable but harder to clean). Consider the room's function, moisture exposure, traffic levels, maintenance requirements, and installation method when selecting flooring."
 }
 
 # Different locations for sample GeoJSON data
@@ -180,7 +191,7 @@ def create_geojson_for_address(address):
 
 def get_best_matching_response(query):
     """Get the best matching response based on keywords in the query"""
-    query = query.lower()
+    query = query.lower().strip()
     
     # Check for GIS/mapping/property related queries with an address
     # Improved address pattern matching - look for addresses in different formats
@@ -224,26 +235,79 @@ def get_best_matching_response(query):
                 default_address = "123 Main Street, Any City, USA"
                 return json.dumps(create_geojson_for_address(default_address))
     
-    # Check for keyword matches in other categories
-    best_match = None
-    max_matches = 0
+    # Check for exact phrase matches first
+    query_phrases = {
+        "how do i measure": "measure backyard",
+        "measuring": "measure backyard",
+        "backyard measurement": "measure backyard",
+        "how big": "measure backyard",
+        "adu": "adu",
+        "accessory dwelling unit": "adu",
+        "granny flat": "adu",
+        "in-law unit": "adu",
+        "mother-in-law": "adu",
+        "foundation": "foundation",
+        "electrical": "electrical",
+        "wiring": "electrical",
+        "circuit": "electrical",
+        "plumbing": "plumbing",
+        "pipes": "plumbing",
+        "water line": "plumbing",
+        "insulation": "insulation",
+        "insulate": "insulation",
+        "r-value": "insulation",
+        "roof": "roofing",
+        "shingles": "roofing",
+        "windows": "windows",
+        "hvac": "hvac",
+        "heating": "hvac",
+        "air conditioning": "hvac",
+        "ventilation": "hvac",
+        "paint": "painting",
+        "painting": "painting",
+        "floor": "flooring",
+        "flooring": "flooring"
+    }
     
-    for topic, response in SAMPLE_RESPONSES.items():
+    # Check for phrase matches
+    for phrase, topic in query_phrases.items():
+        if phrase in query:
+            logger.info(f"Phrase match found: '{phrase}' → {topic}")
+            return SAMPLE_RESPONSES[topic]
+    
+    # Check for direct topic matches in our SAMPLE_RESPONSES
+    for topic in SAMPLE_RESPONSES:
         if topic in query:
             # Direct topic match
-            return response
+            logger.info(f"Direct topic match found: {topic}")
+            return SAMPLE_RESPONSES[topic]
+    
+    # More sophisticated keyword matching
+    topic_scores = {}
+    for topic, response in SAMPLE_RESPONSES.items():
+        # Initialize score
+        score = 0
         
-        # Count word matches
-        matches = sum(1 for word in query.split() if word in topic or topic in word)
-        if matches > max_matches:
-            max_matches = matches
-            best_match = response
+        # Score each word in the query
+        for word in query.split():
+            # Exact matches are worth more
+            if word == topic or word in topic.split():
+                score += 3
+            # Partial matches (word is part of topic or topic is part of word)
+            elif word in topic or topic in word:
+                score += 1
+        
+        if score > 0:
+            topic_scores[topic] = score
     
-    # If we found a reasonable match, return it
-    if best_match:
-        return best_match
+    # If we found matches, return the highest scoring one
+    if topic_scores:
+        best_topic = max(topic_scores.items(), key=lambda x: x[1])[0]
+        logger.info(f"Best keyword match: {best_topic} with score {topic_scores[best_topic]}")
+        return SAMPLE_RESPONSES[best_topic]
     
-    # Default response
+    # Default response if no good matches found
+    logger.info("No good matches found, returning default response")
     return (
         "I understand you're asking about construction, but I don't have specific information on that topic. "
         "For detailed and accurate information, please consult with a local construction professional, "
